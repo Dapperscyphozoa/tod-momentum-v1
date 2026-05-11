@@ -56,6 +56,8 @@ PRIMARY_UNIVERSE   = (os.environ.get("PRIMARY_UNIVERSE", "BTC,ETH,SOL,LINK")
 SECONDARY_UNIVERSE = (os.environ.get("SECONDARY_UNIVERSE", "AVAX,DOGE,BNB,XRP")
                      .split(","))
 BLOCKED_UNIVERSE   = [c for c in os.environ.get("BLOCKED_UNIVERSE", "").split(",") if c]
+BLOCKED_LONGS      = [c for c in os.environ.get("BLOCKED_LONGS", "").split(",") if c]
+BLOCKED_SHORTS     = [c for c in os.environ.get("BLOCKED_SHORTS", "").split(",") if c]
 ACTIVE_UNIVERSE    = [c for c in (PRIMARY_UNIVERSE + SECONDARY_UNIVERSE)
                       if c and c not in BLOCKED_UNIVERSE]
 

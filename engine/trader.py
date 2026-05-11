@@ -110,6 +110,12 @@ def attempt_trade(coin: str, signal: dict) -> dict:
 
     if coin in BLOCKED_UNIVERSE:
         return {"status": "skipped", "reason": "blocked_universe"}
+    is_long = bool(signal.get("is_long", signal.get("trade_side", "B") == "B"))
+    from .config import BLOCKED_LONGS, BLOCKED_SHORTS
+    if is_long and coin in BLOCKED_LONGS:
+        return {"status": "skipped", "reason": f"blocked_longs[{coin}]"}
+    if (not is_long) and coin in BLOCKED_SHORTS:
+        return {"status": "skipped", "reason": f"blocked_shorts[{coin}]"}
     # NB: ACTIVE_UNIVERSE check removed — scan loop already filters via
     # _get_active_universe() (dynamic full HL universe minus blacklist + BLOCKED).
     # The static config ACTIVE_UNIVERSE is now stale when USE_FULL_UNIVERSE=1.
