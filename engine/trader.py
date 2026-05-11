@@ -138,6 +138,27 @@ def attempt_trade(coin: str, signal: dict) -> dict:
             # Fail open — don't kill engine just because regime check failed
             print(f"[regime] classifier error for {coin}: {e}", flush=True)
 
+    # ---------- session filter ----------
+    from .config import SESSION_HOURS, ATR_PCT_MIN, ATR_PCT_MAX
+    if SESSION_HOURS:
+        from datetime import datetime, timezone
+        hour_utc = datetime.now(timezone.utc).hour
+        if hour_utc not in SESSION_HOURS:
+            return {"status": "skipped",
+                     "reason": f"session_filter[utc_h={hour_utc} not in {SESSION_HOURS}]"}
+
+    # ---------- volatility gate ----------
+    if ATR_PCT_MIN > 0 or ATR_PCT_MAX > 0:
+        atr_val = signal.get("atr")
+        if atr_val and ref_px > 0:
+            atr_pct = atr_val / ref_px
+            if ATR_PCT_MIN > 0 and atr_pct < ATR_PCT_MIN:
+                return {"status": "skipped",
+                         "reason": f"vol_floor[atr_pct={atr_pct:.4f} < {ATR_PCT_MIN}]"}
+            if ATR_PCT_MAX > 0 and atr_pct > ATR_PCT_MAX:
+                return {"status": "skipped",
+                         "reason": f"vol_ceiling[atr_pct={atr_pct:.4f} > {ATR_PCT_MAX}]"}
+
     # ---------- per-cell gate ----------
     cell_regime_label = "unknown"
     try:
