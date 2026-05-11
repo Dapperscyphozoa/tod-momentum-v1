@@ -1,0 +1,111 @@
+services:
+  - type: web
+    name: tod-reversion-v1
+    runtime: python
+    region: oregon
+    plan: starter
+    branch: main
+    buildCommand: pip install -r requirements.txt
+    startCommand: python3 server.py
+    healthCheckPath: /health
+    autoDeploy: true
+    disk:
+      name: engine-state
+      mountPath: /var/data
+      sizeGB: 1
+    envVars:
+      # ─── IDENTITY (fork overrides) ─────────────────────────────────
+      - key: ENGINE_NAME
+        value: "tod-reversion-v1"
+      - key: CLOID_PREFIX
+        value: "todrev_"
+      - key: ENGINE_VERSION
+        value: "0.1.0"
+
+      # ─── MODE ─────────────────────────────────────────────────────
+      - key: LIVE_TRADING
+        value: "0"             # 0 = paper, 1 = live (do not flip without monitoring)
+      - key: DRY_RUN
+        value: "0"             # 1 = log signals, no DB inserts
+      - key: USE_TESTNET
+        value: "0"
+
+      # ─── HL WALLET (set on Render UI per service) ─────────────────
+      - key: HL_WALLET
+        sync: false
+      - key: HL_PRIVATE_KEY
+        sync: false
+
+      # ─── PM CONTRACT ──────────────────────────────────────────────
+      - key: PM_URL
+        value: "https://portfolio-manager-7df2.onrender.com"
+      - key: PM_CHECK_ENABLED
+        value: "1"             # 1 = enforce /check gate
+      - key: PM_AUTH_TOKEN
+        sync: false
+
+      # ─── UNIVERSE (CSV) ────────────────────────────────────────────
+      - key: PRIMARY_UNIVERSE
+        value: "BTC,ETH,SOL,LINK"
+      - key: SECONDARY_UNIVERSE
+        value: "AVAX,XRP,DOGE,HYPE"
+      - key: BLOCKED_UNIVERSE
+        value: ""
+
+      # ─── STRATEGY ─────────────────────────────────────────────────
+      - key: STRATEGY_TIMEFRAME
+        value: "1h"
+      - key: CANDLES_HISTORY
+        value: "200"
+      - key: STRATEGY_HOUR_WHITELIST
+        value: "2,3,4,15,16,17,18"
+      - key: STRATEGY_VWAP_DEV_THRESHOLD_PCT
+        value: "0.004"
+
+      # ─── TRADE ────────────────────────────────────────────────────
+      - key: SL_ATR_MULT
+        value: "1.5"
+      - key: TP_ATR_MULT
+        value: "3.0"
+      - key: MAX_HOLD_BARS
+        value: "6"
+      - key: ATR_PERIOD
+        value: "14"
+
+      # ─── SIZING ───────────────────────────────────────────────────
+      - key: RISK_PCT_PER_TRADE
+        value: "0.01"
+      - key: LEVERAGE
+        value: "5"
+      - key: MAX_NOTIONAL_PER_TRADE
+        value: "100"
+      - key: FIXED_NOTIONAL_USD
+        value: "50"
+      - key: MAX_OPEN_POSITIONS
+        value: "4"
+
+      # ─── SCHEDULING ───────────────────────────────────────────────
+      - key: SCAN_INTERVAL_SEC
+        value: "300"
+      - key: POSITION_CHECK_INTERVAL_SEC
+        value: "60"
+
+      # ─── LIVE GUARDRAILS ──────────────────────────────────────────
+      - key: LIVE_MIN_ACCOUNT_VALUE
+        value: "200"
+      - key: LIVE_SIZE_SCALE
+        value: "0.25"
+      - key: LIVE_EXIT_SLIPPAGE
+        value: "0.05"
+      - key: LIVE_MAKER_ONLY_ENTRIES
+        value: "1"
+
+      # ─── STORAGE ──────────────────────────────────────────────────
+      - key: STATE_DIR
+        value: "/var/data"
+
+      # ─── OPERATOR ─────────────────────────────────────────────────
+      - key: HALT_TOKEN
+        sync: false
+      - key: DASHBOARD_ORIGIN
+        value: "*"
