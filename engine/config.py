@@ -58,6 +58,7 @@ SECONDARY_UNIVERSE = (os.environ.get("SECONDARY_UNIVERSE", "AVAX,DOGE,BNB,XRP")
 BLOCKED_UNIVERSE   = [c for c in os.environ.get("BLOCKED_UNIVERSE", "").split(",") if c]
 BLOCKED_LONGS      = [c for c in os.environ.get("BLOCKED_LONGS", "").split(",") if c]
 BLOCKED_SHORTS     = [c for c in os.environ.get("BLOCKED_SHORTS", "").split(",") if c]
+BLOCKED_REGIMES    = [r for r in os.environ.get("BLOCKED_REGIMES", "").split(",") if r]
 ACTIVE_UNIVERSE    = [c for c in (PRIMARY_UNIVERSE + SECONDARY_UNIVERSE)
                       if c and c not in BLOCKED_UNIVERSE]
 
