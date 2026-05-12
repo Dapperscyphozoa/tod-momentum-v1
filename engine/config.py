@@ -22,7 +22,7 @@ import os
 
 # ─── IDENTITY ─────────────────────────────────────────────────────────
 # REQUIRED: forks override.
-ENGINE_NAME = os.environ.get("ENGINE_NAME", "tod-momentum-v1")
+ENGINE_NAME      = os.environ.get("ENGINE_NAME", "engine-template")
 CLOID_PREFIX     = os.environ.get("CLOID_PREFIX", "tmpl_")
 ENGINE_VERSION   = os.environ.get("ENGINE_VERSION", "0.1.0")
 
@@ -86,6 +86,19 @@ STRATEGY_PARAMS = {
     # ... fork adds its own keys here
 }
 
+# Override any STRATEGY_PARAMS key via env (JSON dict): allows tuning forks
+# without code changes. Example:
+#   STRATEGY_PARAMS_OVERRIDES='{"mesh_min_anchors": 3, "approach_max_pct": 0.015}'
+import json as _json_cfg
+_overrides_raw = os.environ.get("STRATEGY_PARAMS_OVERRIDES", "").strip()
+if _overrides_raw:
+    try:
+        _overrides = _json_cfg.loads(_overrides_raw)
+        STRATEGY_PARAMS.update(_overrides)
+        print(f"[config] STRATEGY_PARAMS overrides applied: {list(_overrides.keys())}", flush=True)
+    except Exception as _e:
+        print(f"[config] STRATEGY_PARAMS_OVERRIDES parse failed: {_e}", flush=True)
+
 # ─── TRADE PARAMS ────────────────────────────────────────────────────
 TRADE_PARAMS = {
     "sl_atr_mult":    float(os.environ.get("SL_ATR_MULT", "2.0")),
@@ -110,6 +123,55 @@ MAX_OPEN_POSITIONS    = int(os.environ.get("MAX_OPEN_POSITIONS", "4"))
 # (taker fee), but TPs become resting maker limits when MAKER_TP_ENABLED=1.
 # Default paper fee model assumes taker entry + taker exit (worst case).
 MAKER_ONLY_MODE       = os.environ.get("MAKER_ONLY_MODE", "0") == "1"
+# Cross-engine portfolio netting (prevent duplicate-direction trades from
+# stacking fees). Modes:
+#   "off"     — no check (default for backwards compat)
+#   "size"    — proceed but reduce size proportionally if net exposure exists
+#   "skip"    — skip the trade if net exposure already same direction
+NET_DEDUP_MODE        = os.environ.get("NET_DEDUP_MODE", "off")
+NET_DEDUP_THRESHOLD_USD = float(os.environ.get("NET_DEDUP_THRESHOLD_USD", "100"))
+# Macro confluence — multiply cell_size_mult by /macro_state confluence factor
+# for the (coin_class, direction) of this trade. BTC vs alt classification
+# uses ALT_COINS env list (default: all known alts).
+MACRO_CONFLUENCE_MODE  = os.environ.get("MACRO_CONFLUENCE_MODE", "off")   # off | apply | skip_disagree
+MACRO_DISAGREE_THRESHOLD = float(os.environ.get("MACRO_DISAGREE_THRESHOLD", "0.7"))
+# Ensemble voting — query /confluence/{coin}/{direction} before firing.
+# When N engines agree on same coin/direction in last window, boost size.
+ENSEMBLE_VOTING_MODE   = os.environ.get("ENSEMBLE_VOTING_MODE", "off")  # off | apply
+ENSEMBLE_WINDOW_MIN    = int(os.environ.get("ENSEMBLE_WINDOW_MIN", "60"))
+# Orderbook depth amplifier — scale cell_size_mult by L2 book/direction alignment
+#   off            — no check
+#   apply          — multiply by 0.7-1.2x depending on book direction
+#   skip_against   — hard-skip if book strongly opposes direction
+BOOK_AMPLIFIER_MODE    = os.environ.get("BOOK_AMPLIFIER_MODE", "off")
+
+# Macro confluence (walk-forward exposed missing macro context)
+# When enabled, trader queries PM /macro_state and scales cell_size_mult by
+# the confluence multiplier matching (coin_class, direction).
+MACRO_CONFLUENCE_ENABLED = os.environ.get("MACRO_CONFLUENCE_ENABLED", "0") == "1"
+# Classify coins as 'btc' or 'alt' for confluence lookup.
+MACRO_BTC_COINS = set([c for c in os.environ.get("MACRO_BTC_COINS", "BTC").split(",") if c])
+# Optional kill switch: skip trades when macro confluence < threshold
+MACRO_MIN_CONFLUENCE = float(os.environ.get("MACRO_MIN_CONFLUENCE", "0.0"))
+
+# Cross-engine ensemble confluence — scale size when multiple engines agree
+ENSEMBLE_CONFLUENCE_ENABLED = os.environ.get("ENSEMBLE_CONFLUENCE_ENABLED", "0") == "1"
+ENSEMBLE_WINDOW_MIN = int(os.environ.get("ENSEMBLE_WINDOW_MIN", "60"))
+
+# L2 orderbook imbalance as confluence amplifier
+# When set, trader fetches L2 before entering and applies a size modifier:
+#   strong agreement (book lean matches trade direction): boost size
+#   strong disagreement (book lean opposed): reduce size or skip
+L2_IMBALANCE_ENABLED = os.environ.get("L2_IMBALANCE_ENABLED", "0") == "1"
+L2_IMBALANCE_RANGE_PCT = float(os.environ.get("L2_IMBALANCE_RANGE_PCT", "0.005"))
+L2_IMBALANCE_BLOCK_THRESHOLD = float(os.environ.get("L2_IMBALANCE_BLOCK_THRESHOLD", "-0.5"))
+
+# Session-of-day gate. UTC hours comma-separated. Empty = all hours allowed.
+# Example: "7,8,9,10,11,12,13,14,15" = London session only.
+SESSION_HOURS = set()
+_sh_env = os.environ.get("SESSION_HOURS", "").strip()
+if _sh_env:
+    SESSION_HOURS = {int(h.strip()) for h in _sh_env.split(",") if h.strip().isdigit()}
 MAKER_TP_ENABLED      = os.environ.get("MAKER_TP_ENABLED", "0") == "1"
 # HL builder code — if set, all orders route through this builder and we
 # collect 25-30% of taker fees as kickback (separate from maker rebate).
