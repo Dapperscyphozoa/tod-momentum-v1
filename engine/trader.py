@@ -251,6 +251,15 @@ def attempt_trade(coin: str, signal: dict) -> dict:
         return {"status": "denied_by_pm", "reason": pm_check.get("reason"),
                 "pm_check": pm_check}
 
+    # Cross-engine confluence: if 2+ engines align on (coin, side) within 30min,
+    # PM returns confluence_mult > 1.0. Apply on top of all prior sizing.
+    pm_conf_mult = float(pm_check.get("confluence_mult", 1.0) or 1.0)
+    if pm_conf_mult != 1.0:
+        size *= pm_conf_mult
+        notional *= pm_conf_mult
+        signal["pm_confluence_mult"] = pm_conf_mult
+        signal["pm_confluence_count"] = pm_check.get("confluence_count", 0)
+
     # ===== Paper / dry-run path =====
     if mode in ("paper", "dry_run"):
         signal["cell_regime"] = cell_regime_label
