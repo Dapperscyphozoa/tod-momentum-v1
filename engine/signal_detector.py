@@ -57,7 +57,7 @@ def evaluate_latest_bar(df: pd.DataFrame) -> Optional[dict]:
 
     if abs(dev) < DEV_PCT: return None
 
-    is_long = dev < 0   # price below vwap → mean revert UP
+    is_long = dev > 0   # price above vwap → momentum continuation UP (INVERTED)
 
     atr = calc_atr(highs, lows, closes, TRADE_PARAMS["atr_period"])
     if not atr or atr <= 0: return None
@@ -75,7 +75,7 @@ def evaluate_latest_bar(df: pd.DataFrame) -> Optional[dict]:
         "trade_side": "B" if is_long else "A", "is_long": is_long,
         "sl_px": float(sl_p), "tp_px": float(tp_p),
         "max_hold_bars": TRADE_PARAMS.get("max_hold_bars", 8),
-        "fire_reason": f"tod_h{hour_utc}_dev{dev*100:+.2f}pct",
+        "fire_reason": "INV_" + f"tod_h{hour_utc}_dev{dev*100:+.2f}pct",
         "raw_direction": "LONG" if is_long else "SHORT",
         "fade_direction": "LONG" if is_long else "SHORT",
         "hour_utc": int(hour_utc),

@@ -22,7 +22,7 @@ import os
 
 # ─── IDENTITY ─────────────────────────────────────────────────────────
 # REQUIRED: forks override.
-ENGINE_NAME      = os.environ.get("ENGINE_NAME", "engine-template")
+ENGINE_NAME = os.environ.get("ENGINE_NAME", "tod-momentum-v1")
 CLOID_PREFIX     = os.environ.get("CLOID_PREFIX", "tmpl_")
 ENGINE_VERSION   = os.environ.get("ENGINE_VERSION", "0.1.0")
 
