@@ -16,6 +16,8 @@ from contextlib import contextmanager
 from typing import Optional
 
 from .config import STATE_DIR, DB_FILE
+from . import db_backup
+
 
 
 _lock = threading.RLock()
@@ -31,11 +33,15 @@ def init_db():
     global _conn
     with _lock:
         if _conn is not None: return
+        # Restore DB from GitHub before opening (no-op if local has data)
+        db_backup.restore_on_boot(_db_path())
         _conn = sqlite3.connect(_db_path(), check_same_thread=False, isolation_level=None)
         _conn.execute("PRAGMA journal_mode=WAL")
         _conn.execute("PRAGMA synchronous=NORMAL")
         _create_schema(_conn)
         _migrate_schema(_conn)
+        # Start periodic backup thread (debounced, free, idempotent)
+        db_backup.start_background_thread()
 
 
 def _migrate_schema(c: sqlite3.Connection):
@@ -300,6 +306,7 @@ def close_trade(cloid: str, exit_px: float, outcome: str, gross_pnl: float,
                       "MANUAL": "manual", "HALT": "halted"}
         c.execute("UPDATE trades SET status = ? WHERE cloid = ?",
                   (status_map.get(outcome, "closed"), cloid))
+    db_backup.schedule_backup()
 
 
 def get_open_trades() -> list[dict]:
