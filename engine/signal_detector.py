@@ -62,13 +62,9 @@ def evaluate_latest_bar(df: pd.DataFrame) -> Optional[dict]:
     atr = calc_atr(highs, lows, closes, TRADE_PARAMS["atr_period"])
     if not atr or atr <= 0: return None
     sl_m = TRADE_PARAMS["sl_atr_mult"]; tp_m = TRADE_PARAMS["tp_atr_mult"]
-    if is_long: sl_p = last_c - sl_m * atr; tp_p = cur_vwap  # revert to VWAP
-    else:       sl_p = last_c + sl_m * atr; tp_p = cur_vwap
-
-    # Sanity: tp must be different from entry by >= 0.5×atr
-    if abs(tp_p - last_c) < 0.5 * atr:
-        if is_long: tp_p = last_c + tp_m * atr
-        else:       tp_p = last_c - tp_m * atr
+    # MOMENTUM: TP in trade direction (continuation), SL on opposite side
+    if is_long: sl_p = last_c - sl_m * atr; tp_p = last_c + tp_m * atr
+    else:       sl_p = last_c + sl_m * atr; tp_p = last_c - tp_m * atr
 
     return {
         "fire_ts": df.index[-1], "ref_price": last_c, "atr": atr,
