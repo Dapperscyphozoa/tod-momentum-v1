@@ -227,6 +227,14 @@ def attempt_trade(coin: str, signal: dict) -> dict:
         size *= cell_size_mult; notional *= cell_size_mult
     except NameError:
         pass
+
+    # Tiered conviction: weak signals trade at fractional size_multiplier
+    conviction_mult = float(signal.get("size_multiplier", 1.0))
+    if conviction_mult != 1.0:
+        size *= conviction_mult
+        notional *= conviction_mult
+        signal["conviction_applied_mult"] = conviction_mult
+
     if notional < 10:
         return {"status": "skipped",
                 "reason": f"notional_too_small: ${notional:.2f} (size_scale={size_scale:.3f})"}

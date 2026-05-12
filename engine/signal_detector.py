@@ -27,12 +27,12 @@ def calc_atr(highs, lows, closes, period: int = 14) -> float:
     return float(tr.rolling(period).mean().iloc[-1])
 
 
-def evaluate_latest_bar(df: pd.DataFrame) -> Optional[dict]:
+def _evaluate_with_thresholds(df: pd.DataFrame, vwap_dev_threshold_pct: float) -> Optional[dict]:
     # Whitelist hours-of-day UTC (CSV via STRATEGY_PARAMS for override)
     whitelist_str = STRATEGY_PARAMS.get("hour_whitelist",
                                          "2,3,4,15,16,17,18")
     whitelist = set(int(x) for x in whitelist_str.split(","))
-    DEV_PCT = STRATEGY_PARAMS.get("vwap_dev_threshold_pct", 0.004)
+    DEV_PCT = vwap_dev_threshold_pct
     if df is None or len(df) < 24: return None
 
     # Get hour in UTC from index
@@ -77,3 +77,21 @@ def evaluate_latest_bar(df: pd.DataFrame) -> Optional[dict]:
         "hour_utc": int(hour_utc),
         "vwap": float(cur_vwap), "deviation_pct": float(dev),
     }
+
+
+def evaluate_latest_bar(df) -> Optional[dict]:
+    """Tiered conviction scanner — strict (full size) + weak (quarter size)."""
+    strict_d = STRATEGY_PARAMS.get("vwap_dev_threshold_pct", 0.004)
+    sig = _evaluate_with_thresholds(df, strict_d)
+    if sig is not None:
+        sig["conviction"] = "strong"; sig["size_multiplier"] = 1.0
+        sig["fire_reason"] = f"{sig.get('fire_reason','')}_STRONG"
+        return sig
+    weak_d = STRATEGY_PARAMS.get("vwap_dev_threshold_pct_weak", 0.002)
+    if weak_d < strict_d:
+        sig = _evaluate_with_thresholds(df, weak_d)
+        if sig is not None:
+            sig["conviction"] = "weak"; sig["size_multiplier"] = 0.25
+            sig["fire_reason"] = f"{sig.get('fire_reason','')}_WEAK"
+            return sig
+    return None
