@@ -81,10 +81,9 @@ ACTIVE_UNIVERSE    = [c for c in (PRIMARY_UNIVERSE + SECONDARY_UNIVERSE)
 # ─── STRATEGY PARAMS ─────────────────────────────────────────────────
 # REQUIRED: forks override. Put your tuned numbers here verbatim.
 STRATEGY_PARAMS = {
-    "timeframe":             os.environ.get("STRATEGY_TIMEFRAME", "1h"),
-    "candles_history":       int(os.environ.get("CANDLES_HISTORY", "200")),
-    "hour_whitelist":        os.environ.get("STRATEGY_HOUR_WHITELIST", "2,3,4,15,16,17,18"),
-    "vwap_dev_threshold_pct":float(os.environ.get("STRATEGY_VWAP_DEV_THRESHOLD_PCT", "0.005")),
+    "timeframe":       os.environ.get("STRATEGY_TIMEFRAME", "1h"),
+    "candles_history": int(os.environ.get("CANDLES_HISTORY", "200")),
+    # ... fork adds its own keys here
 }
 
 # ─── TRADE PARAMS ────────────────────────────────────────────────────
@@ -93,6 +92,11 @@ TRADE_PARAMS = {
     "tp_atr_mult":    float(os.environ.get("TP_ATR_MULT", "4.0")),
     "max_hold_bars":  int(os.environ.get("MAX_HOLD_BARS", "48")),
     "atr_period":     int(os.environ.get("ATR_PERIOD", "14")),
+    # HL fee tiers (bps). Maker is a rebate (negative cost).
+    # Default tier: maker -0.05 bps (rebate), taker +4.5 bps.
+    # Env-overridable per engine to model VIP tiers / builder code rebates.
+    "fee_bps_maker":  float(os.environ.get("FEE_BPS_MAKER", "-0.05")),
+    "fee_bps_taker":  float(os.environ.get("FEE_BPS_TAKER", "4.5")),
 }
 
 # ─── SIZING / RISK ───────────────────────────────────────────────────
@@ -101,6 +105,16 @@ LEVERAGE              = float(os.environ.get("LEVERAGE", "5"))
 MAX_NOTIONAL_PER_TRADE = float(os.environ.get("MAX_NOTIONAL_PER_TRADE", "100"))
 FIXED_NOTIONAL_USD    = float(os.environ.get("FIXED_NOTIONAL_USD", "50"))
 MAX_OPEN_POSITIONS    = int(os.environ.get("MAX_OPEN_POSITIONS", "4"))
+
+# Maker mode: entries are post-only (maker rebate), exits are market for SL/TIME
+# (taker fee), but TPs become resting maker limits when MAKER_TP_ENABLED=1.
+# Default paper fee model assumes taker entry + taker exit (worst case).
+MAKER_ONLY_MODE       = os.environ.get("MAKER_ONLY_MODE", "0") == "1"
+MAKER_TP_ENABLED      = os.environ.get("MAKER_TP_ENABLED", "0") == "1"
+# HL builder code — if set, all orders route through this builder and we
+# collect 25-30% of taker fees as kickback (separate from maker rebate).
+HL_BUILDER_CODE       = os.environ.get("HL_BUILDER_CODE", "")
+BUILDER_KICKBACK_BPS  = float(os.environ.get("BUILDER_KICKBACK_BPS", "1.1"))  # ~25% of 4.5
 
 # ─── SCHEDULING ──────────────────────────────────────────────────────
 HTTP_PORT                    = int(os.environ.get("PORT", "10000"))
